@@ -76,8 +76,8 @@ router.route('/status')
   .post((req, res) => {
     let posts = req.body.posts;
     var T = new Twit({
-      consumer_key:         twitterConfig.consumerKey,
-      consumer_secret:      twitterConfig.consumerSecret,
+      consumer_key:         process.env.CONSUMER_KEY,
+      consumer_secret:      process.env.CONSUMER_SECRET,
       access_token:         req.body.oauth_token,
       access_token_secret:  req.body.oauth_token_secret,
       timeout_ms:           60*1000,  // optional HTTP request timeout to apply to all requests.
