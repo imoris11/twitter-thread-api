@@ -10,19 +10,9 @@ var express = require('express'),
   Twit = require('twit'),
   util = require("util");
 
-  //var twitterConfig = require('./twitter.config.js');
+  var twitterConfig = require('./twitter.config.js');
 
 var app = express();
-
-var T = new Twit({
-  consumer_key:         process.env.CONSUMER_KEY,
-  consumer_secret:      process.env.CONSUMER_SECRET,
-  access_token:         process.env.ACCESS_TOKEN,
-  access_token_secret:  process.env.ACCESS_TOKEN_SECRET,
-  timeout_ms:           60*1000,  // optional HTTP request timeout to apply to all requests.
-//  strictSSL:            true,     // optional - requires SSL certificates to be valid.
-});
-
 // enable cors
 var corsOption = {
   origin: true,
@@ -39,27 +29,27 @@ app.use(bodyParser.urlencoded({
 app.use(bodyParser.json());
 
 let send_single_tweet = require('util').promisify(
-  (options, data, cb) => T.post(
+  (T, options, data, cb) => T.post(
     options,
     data,
     (err, ...results) => cb(err, results)
   )
 );
 
-const thread = async (posts, id, res) => {
+const thread = async (posts, id, T, res) => {
   for(let i = 0; i < posts.length; i++){
-    let content = await send_single_tweet('statuses/update', { status: posts[i], in_reply_to_status_id: id });
+    let content = await send_single_tweet(T, 'statuses/update', { status: posts[i], in_reply_to_status_id: id });
     id = content[0].id_str;
   };
-  res.json({message: "Completed"});
+  res.json({completed: true})
 };
 
-const start_thread = (first, tweets, res) => {
-  send_single_tweet('statuses/update', { status: `${first}` })
+const start_thread = (first, tweets, T, res) => {
+  send_single_tweet(T, 'statuses/update', { status: `${first}` })
     .then((first_tweet) => {
         console.log(`First tweet tweeted!`);
         let starting_id = first_tweet[0].id_str;
-        return thread(tweets, starting_id, res);
+        return thread(tweets, starting_id, T, res);
     })
     .catch(err => console.log(err));
 };
@@ -85,7 +75,14 @@ router.route('/auth/twitter/reverse')
 router.route('/status')
   .post((req, res) => {
     let posts = req.body.posts;
-    start_thread(posts[0], posts.slice(1), res);
+    var T = new Twit({
+      consumer_key:         twitterConfig.consumerKey,
+      consumer_secret:      twitterConfig.consumerSecret,
+      access_token:         req.body.oauth_token,
+      access_token_secret:  req.body.oauth_token_secret,
+      timeout_ms:           60*1000,  // optional HTTP request timeout to apply to all requests.
+    });
+    start_thread(posts[0], posts.slice(1), T, res);
   });
 
 router.route('/auth/twitter')
